@@ -20,37 +20,68 @@ function App() {
   const [incomeTax, setIncomeTax] = useState(0);
   const [errorFlag, setErrorFlag] = useState(false);
   const [textFlag, setTextFlag] = useState(false);
-
+  const [ronCurrency, setRonCurrency] = useState(1);
+  const [exchangeRateFlag, setExchangeRateFlag] = useState(true);
+  const BASE_URL = "https://api.exchangerate.host/latest";
   const numberOfWorkingDays = 261;
 
   const handleSubmit = () => {
     setTextFlag(true);
   };
 
-  const handlePrice = (event) => {
-    const value = event.target.value;
-
-    if (value == "") {
-      setErrorFlag(false);
-    } else if (value.match(/^[0-9]{0,3}[.]?[0-9]{0,6}$/)) {
-      setErrorFlag(false);
-      setPricePerHour(value);
-    } else {
-      setErrorFlag(true);
+  const handleClick = () => {
+    setExchangeRateFlag(!exchangeRateFlag);
+    if (!exchangeRateFlag) {
+      document.getElementById("exchangeRateRon").value = "";
     }
   };
 
-  const handleHours = (event) => {
-    const value = event.target.value;
-
-    if (value == "") {
+  const handleOnChange = (value, type) => {
+    if (value === "") {
       setErrorFlag(false);
-    } else if (!value.match(/^[0-9]{0,2}[.]?[0-9]{0,2}$/) || parseFloat(value) > 12) {
+      switch (type) {
+        case "ron":
+          setRonCurrency(0);
+          break;
+        case "price":
+          setPricePerHour(0);
+          break;
+        case "hours":
+          setHoursPerDay(0);
+          break;
+        default:
+          break;
+      }
+    } else if (
+      !value.match(/^[0-9]{0,2}[.]?[0-9]{0,3}$/) ||
+      (type === "ron" && parseFloat(value) >= 100) ||
+      (type === "price" && !value.match(/^[0-9]{0,3}[.]?[0-9]{0,6}$/)) ||
+      (type === "hours" && parseFloat(value) > 12)
+    ) {
       setErrorFlag(true);
     } else {
       setErrorFlag(false);
-      setHoursPerDay(value);
+      switch (type) {
+        case "ron":
+          setRonCurrency(value);
+          break;
+        case "price":
+          setPricePerHour(value);
+          break;
+        case "hours":
+          setHoursPerDay(value);
+          break;
+        default:
+          break;
+      }
     }
+  };
+
+  const formatNumbers = (input) => {
+    if (Number.isInteger(input)) {
+      return input;
+    }
+    return input.toFixed(3);
   };
 
   const percentColors = [
@@ -87,9 +118,9 @@ function App() {
   }
 
   useEffect(() => {
-    setHoursPerYear(numberOfWorkingDays * hoursPerDay);
-    setPricePerYear(hoursPerYear * pricePerHour);
-    setPricePerYearInRON(pricePerYear * 5);
+    setHoursPerYear(formatNumbers(numberOfWorkingDays * hoursPerDay));
+    setPricePerYear(formatNumbers(hoursPerYear * pricePerHour));
+    setPricePerYearInRON(formatNumbers(pricePerYear * ronCurrency));
     setCasFlag(pricePerYearInRON > minimumGrossWage * 12);
     setCassFlag(pricePerYearInRON > minimumGrossWage * 6);
     setMiddleLimitFlag(
@@ -108,58 +139,83 @@ function App() {
       setCassValue(0);
       setCasValue(0);
     } else if (cassLowLimitFlag) {
-      setCassValue(1800);
+      setCassValue(formatNumbers(minimumGrossWage * 6 * 0.1));
       setCasValue(0);
     } else if (middleLimitFlag) {
-      setCassValue(3600);
-      setCasValue(9000);
+      setCassValue(formatNumbers(minimumGrossWage * 12 * 0.1));
+      setCasValue(formatNumbers(minimumGrossWage * 12 * 0.25));
     } else {
-      setCassValue(7200);
-      setCasValue(18000);
+      setCassValue(formatNumbers(minimumGrossWage * 24 * 0.1));
+      setCasValue(formatNumbers(minimumGrossWage * 24 * 0.25));
     }
-    setIncomeTax((pricePerYearInRON - casValue - cassValue) * 0.1);
-    setNetIncome(incomeTax * 9);
-    setNetIncomeHour(netIncome / hoursPerYear / 5);
+
+    setIncomeTax(
+      formatNumbers((pricePerYearInRON - casValue - cassValue) * 0.1)
+    );
+    setNetIncome(formatNumbers(incomeTax * 9));
+    setNetIncomeHour(formatNumbers(netIncome / hoursPerYear / ronCurrency));
     setTotalTaxes(Math.round(((netIncome / pricePerYearInRON) * -1 + 1) * 100));
+
+    if (exchangeRateFlag) {
+      fetch(`${BASE_URL}?base=EUR&symbols=RON`)
+        .then((res) => res.json())
+        .then((data) => setRonCurrency(formatNumbers(data.rates["RON"])));
+    }
   });
 
   return (
     <div className="App" style={{ display: "flex", flexDirection: "column" }}>
       <form style={{ display: "flex", flexDirection: "column" }}>
         <label style={{ marginBottom: "10px" }}>
-          Price per hour (€):{" "}
+          Exchange rate:{" "}
+          <input
+            type="text"
+            name="exchange-rate-eur"
+            disabled="true"
+            value={1}
+            style={{ width: "10px" }}
+          />
+          {" EURO ~ "}
+          <input
+            type="text"
+            name="exchange-rate-ron"
+            id="exchangeRateRon"
+            disabled={exchangeRateFlag}
+            onChange={(event) => handleOnChange(event.target.value, "ron")}
+            maxLength="5"
+            placeholder={ronCurrency}
+            style={{ width: "35px" }}
+          />
+          {" RON"}
+        </label>
+        <label>
+          Want custom exchange rate? Check this:{" "}
+          <input type="checkbox" onClick={handleClick}></input>
+        </label>
+        <label style={{ marginBottom: "10px" }}>
+          Price per hour (in EURO):{" "}
           <input
             type="text"
             name="price-per-hour"
-            onChange={handlePrice}
+            id="pricePerHour"
+            onChange={(event) => handleOnChange(event.target.value, "price")}
             maxLength="9"
             placeholder="0"
           />
         </label>
         <label style={{ marginBottom: "10px" }}>
-          Hours per day:{" "}
+          Working hours per day:{" "}
           <input
             type="text"
             name="hours-per-day"
-            onChange={handleHours}
+            id="hoursPerDay"
+            onChange={(event) => handleOnChange(event.target.value, "hours")}
             maxLength="5"
             placeholder="0"
           />
         </label>
-        {/* <label style={{ marginBottom: "10px" }}>
-          Hours per day:{" "}
-          <input
-            type="text"
-            name="hours-per-day"
-            onChange={handleHours}
-            maxLength="2"
-            placeholder="0"
-          />
-        </label> */}
       </form>
-      {errorFlag && (
-        <div style={{ color: "red" }}> Wrong input! </div>
-      )}
+      {errorFlag && <div style={{ color: "red" }}> Wrong input! </div>}
       {textFlag ? (
         <>
           <table>
