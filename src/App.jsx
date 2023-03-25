@@ -37,43 +37,50 @@ function App() {
   };
 
   const handleOnChange = (value, type) => {
-    if (value === "") {
+    let isValid = false;
+    let result = 0;
+
+    switch (type) {
+      case "ron":
+        isValid =
+          value.match(/^[0-9]{0,2}[.]?[0-9]{0,3}$/) && parseFloat(value) < 100;
+        result = parseFloat(value);
+        break;
+      case "price":
+        isValid =
+          value.match(/^[0-9]{0,3}[.]?[0-9]{0,6}$/) && parseFloat(value) < 1000;
+        result = parseFloat(value);
+        break;
+      case "hours":
+        isValid =
+          value.match(/^[0-9]{0,2}[.]?[0-9]{0,3}$/) && parseFloat(value) <= 12;
+        result = parseFloat(value);
+        break;
+      default:
+        break;
+    }
+
+    if (value == "") {
       setErrorFlag(false);
-      switch (type) {
-        case "ron":
-          setRonCurrency(0);
-          break;
-        case "price":
-          setPricePerHour(0);
-          break;
-        case "hours":
-          setHoursPerDay(0);
-          break;
-        default:
-          break;
-      }
-    } else if (
-      !value.match(/^[0-9]{0,2}[.]?[0-9]{0,3}$/) ||
-      (type === "ron" && parseFloat(value) >= 100) ||
-      (type === "price" && !value.match(/^[0-9]{0,3}[.]?[0-9]{0,6}$/)) ||
-      (type === "hours" && parseFloat(value) > 12)
-    ) {
-      setErrorFlag(true);
+      result = 0;
+    } else if (isValid) {
+      setErrorFlag(false);
     } else {
-      setErrorFlag(false);
-      switch (type) {
-        case "ron":
-          setRonCurrency(value);
-          break;
-        case "price":
-          setPricePerHour(value);
-          break;
-        case "hours":
-          setHoursPerDay(value);
-          break;
-        default:
-          break;
-      }
+      setErrorFlag(true);
+    }
+
+    switch (type) {
+      case "ron":
+        setRonCurrency(result);
+        break;
+      case "price":
+        setPricePerHour(result);
+        break;
+      case "hours":
+        setHoursPerDay(result);
+        break;
+      default:
+        break;
     }
   };
 
