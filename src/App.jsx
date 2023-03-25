@@ -30,35 +30,23 @@ function App() {
   };
 
   const handleClick = () => {
-    setExchangeRateFlag(!exchangeRateFlag);
+    setExchangeRateFlag((prev) => !prev);
     if (!exchangeRateFlag) {
       document.getElementById("exchangeRateRon").value = "";
     }
   };
 
   const handleOnChange = (value, type) => {
-    let isValid = false;
-    let result = 0;
+    const regex = {
+      ron: /^[0-9]{0,2}[.]?[0-9]{0,3}$/,
+      price: /^[0-9]{0,3}[.]?[0-9]{0,6}$/,
+      hours: /^[0-9]{0,2}[.]?[0-9]{0,3}$/,
+    };
 
-    switch (type) {
-      case "ron":
-        isValid =
-          value.match(/^[0-9]{0,2}[.]?[0-9]{0,3}$/) && parseFloat(value) < 100;
-        result = parseFloat(value);
-        break;
-      case "price":
-        isValid =
-          value.match(/^[0-9]{0,3}[.]?[0-9]{0,6}$/) && parseFloat(value) < 1000;
-        result = parseFloat(value);
-        break;
-      case "hours":
-        isValid =
-          value.match(/^[0-9]{0,2}[.]?[0-9]{0,3}$/) && parseFloat(value) <= 12;
-        result = parseFloat(value);
-        break;
-      default:
-        break;
-    }
+    let isValid =
+      regex[type].test(value) &&
+      parseFloat(value) <= (type === "price" ? 1000 : 100);
+    let result = parseFloat(value);
 
     if (value == "") {
       setErrorFlag(false);
@@ -85,10 +73,7 @@ function App() {
   };
 
   const formatNumbers = (input) => {
-    if (Number.isInteger(input)) {
-      return input;
-    }
-    return input.toFixed(3);
+    return Number.isInteger(input) ? input : input.toFixed(3);
   };
 
   const percentColors = [
